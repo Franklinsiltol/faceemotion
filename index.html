@@ -1,1 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face-API.js Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        video {
+            border: 1px solid black;
+            border-radius: 10px;
+        }
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Face-API.js Test</h1>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="overlay"></canvas>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+    <script>
+        async function setupCamera() {
+            const video = document.getElementById('video');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                return new Promise(resolve => {
+                    video.onloadedmetadata = () => resolve(video);
+                });
+            } catch (error) {
+                console.error("Error accessing camera:", error);
+            }
+        }
+
+        async function loadModels() {
+            await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+            await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+            await faceapi.nets.faceExpressionNet.loadFromUri('/models');
+        }
+
+        async function detectFace() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('overlay');
+            faceapi.matchDimensions(canvas, { width: video.width, height: video.height });
+            const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceExpressions();
+            const resizedDetections = faceapi.resizeResults(detections, { width: video.width, height: video.height });
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+            faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+        }
+
+        async function main() {
+            await loadModels();
+            const video = await setupCamera();
+            video.addEventListener('play', () => {
+                const canvas = document.getElementById('overlay');
+                canvas.width = video.width;
+                canvas.height = video.height;
+                setInterval(detectFace, 100);
+            });
+        }
+
+        main();
+    </script>
+</body>
+</html>
 
