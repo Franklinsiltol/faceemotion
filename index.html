@@ -3,24 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Test</title>
+    <title>Face Detection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        video {
+            border: 1px solid black;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 600px;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border: 1px solid red;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 600px;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
-    <h1>Camera Test</h1>
+    <h1>Face Detection Test</h1>
     <video id="video" autoplay playsinline></video>
+    <canvas id="overlay"></canvas>
 
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
     <script>
         async function setupCamera() {
             const video = document.getElementById('video');
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
+                return new Promise(resolve => {
+                    video.onloadedmetadata = () => resolve(video);
+                });
             } catch (error) {
                 console.error("Error accessing camera:", error);
             }
         }
 
-        setupCamera();
+        async function loadModels() {
+            await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/weights');
+            await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/weights');
+            await faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/weights');
+        }
+
+        function startDetection(video) {
+            const canvas = document.getElementById('overlay');
+            faceapi.matchDimensions(canvas, { width: video.width, height: video.height });
+
+            setInterval(async () => {
+                const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceExpressions();
+
+                if (detections) {
+                    const resizedDetections = faceapi.resizeResults(detections, { width: video.width, height: video.height });
+                    const context = canvas.getContext('2d');
+                    context.clearRect(0, 0, canvas.width, canvas.height);
+                    faceapi.draw.drawDetections(canvas, resizedDetections);
+                    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+                    faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+                }
+            }, 100);
+        }
+
+        async function main() {
+            await loadModels();
+            const video = await setupCamera();
+            const canvas = document.getElementById('overlay');
+            canvas.width = video.width;
+            canvas.height = video.height;
+            video.addEventListener('play', () => startDetection(video));
+        }
+
+        main();
     </script>
 </body>
 </html>
