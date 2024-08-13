@@ -1,96 +1,121 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Detection Test</title>
+    <title>Reconhecimento de Cartão de Visita</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
             margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            height: 100vh;
+            background-color: #f4f4f4;
         }
-        video {
-            border: 1px solid black;
-            border-radius: 10px;
-            width: 100%;
-            max-width: 600px;
+        h1 {
+            color: #333;
         }
-        canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            border: 1px solid red;
-            border-radius: 10px;
-            width: 100%;
+        .container {
+            width: 90%;
             max-width: 600px;
-            pointer-events: none;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-top: 20px;
+            box-sizing: border-box;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        @media (max-width: 600px) {
+            .container {
+                width: 100%;
+                padding: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Face Detection Test</h1>
-    <video id="video" autoplay playsinline></video>
-    <canvas id="overlay"></canvas>
+    <div class="container">
+        <h1>Reconhecimento de Cartão de Visita</h1>
+        <input type="file" id="fileInput" accept="image/*">
+        <button onclick="processImage()">Processar Imagem</button>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+        <h2>Informações Reconhecidas</h2>
+        <label>Nome: <input type="text" id="name" placeholder="Nome"></label><br>
+        <label>Cargo: <input type="text" id="position" placeholder="Cargo"></label><br>
+        <label>Telefone: <input type="text" id="phone" placeholder="Telefone"></label><br>
+        <label>Endereço: <input type="text" id="address" placeholder="Endereço"></label><br>
+
+        <h2>Adicionar Informações (se necessário)</h2>
+        <label>Nome Adicional: <input type="text" id="additionalName"></label><br>
+        <label>Cargo Adicional: <input type="text" id="additionalPosition"></label><br>
+        <label>Telefone Adicional: <input type="text" id="additionalPhone"></label><br>
+        <label>Endereço Adicional: <input type="text" id="additionalAddress"></label><br>
+
+        <button onclick="shareInfo()">Compartilhar Informações</button>
+    </div>
+
     <script>
-        async function setupCamera() {
-            const video = document.getElementById('video');
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                return new Promise(resolve => {
-                    video.onloadedmetadata = () => resolve(video);
+        function processImage() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (file) {
+                Tesseract.recognize(
+                    file,
+                    'por', // Para português. Use 'eng' para inglês ou outras línguas conforme necessário.
+                    { logger: info => console.log(info) }
+                ).then(({ data: { text } }) => {
+                    // Aqui você pode processar o texto reconhecido e preencher os campos
+                    document.getElementById('name').value = extractInfo(text, 'Nome');
+                    document.getElementById('position').value = extractInfo(text, 'Cargo');
+                    document.getElementById('phone').value = extractInfo(text, 'Telefone');
+                    document.getElementById('address').value = extractInfo(text, 'Endereço');
                 });
-            } catch (error) {
-                console.error("Error accessing camera:", error);
+            } else {
+                alert('Por favor, selecione uma imagem.');
             }
         }
 
-        async function loadModels() {
-            await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/weights');
-            await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/weights');
-            await faceapi.nets.faceExpressionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/weights');
+        function extractInfo(text, label) {
+            // Função básica para encontrar informações com base no rótulo
+            const regex = new RegExp(label + ':\\s*(.+)', 'i');
+            const match = text.match(regex);
+            return match ? match[1] : '';
         }
 
-        function startDetection(video) {
-            const canvas = document.getElementById('overlay');
-            faceapi.matchDimensions(canvas, { width: video.width, height: video.height });
+        function shareInfo() {
+            const name = document.getElementById('name').value || document.getElementById('additionalName').value;
+            const position = document.getElementById('position').value || document.getElementById('additionalPosition').value;
+            const phone = document.getElementById('phone').value || document.getElementById('additionalPhone').value;
+            const address = document.getElementById('address').value || document.getElementById('additionalAddress').value;
 
-            setInterval(async () => {
-                const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-                    .withFaceLandmarks()
-                    .withFaceExpressions();
-
-                if (detections) {
-                    const resizedDetections = faceapi.resizeResults(detections, { width: video.width, height: video.height });
-                    const context = canvas.getContext('2d');
-                    context.clearRect(0, 0, canvas.width, canvas.height);
-                    faceapi.draw.drawDetections(canvas, resizedDetections);
-                    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-                    faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
-                }
-            }, 100);
+            const info = `Nome: ${name}\nCargo: ${position}\nTelefone: ${phone}\nEndereço: ${address}`;
+            alert('Informações para compartilhar:\n\n' + info);
+            // Aqui você pode integrar com uma API de compartilhamento ou criar um link para o compartilhamento
         }
-
-        async function main() {
-            await loadModels();
-            const video = await setupCamera();
-            const canvas = document.getElementById('overlay');
-            canvas.width = video.width;
-            canvas.height = video.height;
-            video.addEventListener('play', () => startDetection(video));
-        }
-
-        main();
     </script>
 </body>
 </html>
