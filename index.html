@@ -3,119 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reconhecimento de Cartão de Visita</title>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.1/dist/tesseract.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f4f4f4;
-        }
-        h1 {
-            color: #333;
-        }
-        .container {
-            width: 90%;
-            max-width: 600px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            padding: 20px;
-            margin-top: 20px;
-            box-sizing: border-box;
-        }
-        input[type="text"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin: 10px 0;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        @media (max-width: 600px) {
-            .container {
-                width: 100%;
-                padding: 10px;
-            }
-        }
-    </style>
+    <title>Leitor de Cartão de Visita</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Reconhecimento de Cartão de Visita</h1>
-        <input type="file" id="fileInput" accept="image/*">
-        <button onclick="processImage()">Processar Imagem</button>
-
-        <h2>Informações Reconhecidas</h2>
-        <label>Nome: <input type="text" id="name" placeholder="Nome"></label><br>
-        <label>Cargo: <input type="text" id="position" placeholder="Cargo"></label><br>
-        <label>Telefone: <input type="text" id="phone" placeholder="Telefone"></label><br>
-        <label>Endereço: <input type="text" id="address" placeholder="Endereço"></label><br>
-
-        <h2>Adicionar Informações (se necessário)</h2>
-        <label>Nome Adicional: <input type="text" id="additionalName"></label><br>
-        <label>Cargo Adicional: <input type="text" id="additionalPosition"></label><br>
-        <label>Telefone Adicional: <input type="text" id="additionalPhone"></label><br>
-        <label>Endereço Adicional: <input type="text" id="additionalAddress"></label><br>
-
-        <button onclick="shareInfo()">Compartilhar Informações</button>
+        <h1>Leitor de Cartão de Visita</h1>
+        <div class="camera-container">
+            <video id="camera" autoplay></video>
+            <canvas id="canvas"></canvas>
+            <div class="overlay"></div>
+        </div>
+        <button id="capture-btn">Capturar</button>
+        <button id="upload-btn">Enviar Foto</button>
+        <input type="file" id="file-input" accept="image/*">
+        <div id="results">
+            <h2>Informações Extraídas</h2>
+            <p><strong>Nome:</strong> <span id="nome"></span></p>
+            <p><strong>Cargo:</strong> <span id="cargo"></span></p>
+            <p><strong>E-mail:</strong> <span id="email"></span></p>
+            <p><strong>Telefone:</strong> <span id="telefone"></span></p>
+        </div>
+        <button id="share-btn">Compartilhar Informações</button>
     </div>
 
-    <script>
-        function processImage() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            if (file) {
-                Tesseract.recognize(
-                    file,
-                    'por', // Para português. Use 'eng' para inglês ou outras línguas conforme necessário.
-                    { logger: info => console.log(info) }
-                ).then(({ data: { text } }) => {
-                    // Aqui você pode processar o texto reconhecido e preencher os campos
-                    document.getElementById('name').value = extractInfo(text, 'Nome');
-                    document.getElementById('position').value = extractInfo(text, 'Cargo');
-                    document.getElementById('phone').value = extractInfo(text, 'Telefone');
-                    document.getElementById('address').value = extractInfo(text, 'Endereço');
-                });
-            } else {
-                alert('Por favor, selecione uma imagem.');
-            }
-        }
-
-        function extractInfo(text, label) {
-            // Função básica para encontrar informações com base no rótulo
-            const regex = new RegExp(label + ':\\s*(.+)', 'i');
-            const match = text.match(regex);
-            return match ? match[1] : '';
-        }
-
-        function shareInfo() {
-            const name = document.getElementById('name').value || document.getElementById('additionalName').value;
-            const position = document.getElementById('position').value || document.getElementById('additionalPosition').value;
-            const phone = document.getElementById('phone').value || document.getElementById('additionalPhone').value;
-            const address = document.getElementById('address').value || document.getElementById('additionalAddress').value;
-
-            const info = `Nome: ${name}\nCargo: ${position}\nTelefone: ${phone}\nEndereço: ${address}`;
-            alert('Informações para compartilhar:\n\n' + info);
-            // Aqui você pode integrar com uma API de compartilhamento ou criar um link para o compartilhamento
-        }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
